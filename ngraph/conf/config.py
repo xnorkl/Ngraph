@@ -14,7 +14,7 @@ def update(k, v):
     set_key(dot_env, k, v)
 
 # ArangoDB Config
-AR_SERV = '192.168.88.251'
-AR_PORT = '8529'
+AR_SERV = environ.get('SERVER')
+AR_PORT = environ.get('PORT')
 AR_USER = environ.get('ARANGO_USER')
 AR_PASS = environ.get('ARANGO_PASS')
