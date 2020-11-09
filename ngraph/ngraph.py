@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import conf.config as config
 import json
 import os
 import re
@@ -109,12 +110,12 @@ def vuln_scan(r, arg='', mode=0):
 
 ### Database Handling
 
-def conn():
+def conn(server=config.AR_SERV,port=config.AR_PORT):
     # TODO best to dot environment + config to handle this.
     return Connection(
-        arangoURL=f'http://{arg().server}:{arg().port}',
-        username="CHANGEME",
-        password="CHANGEME")
+        arangoURL=f'http://{server}:{port}',
+        username=config.AR_USER,
+        password=config.AR_PASS)
 
 def hasdb(name):
     ''' Return Bool on Database Name. '''
@@ -129,14 +130,14 @@ def getdb(name):
 def getcoll(name, check=False):
     ''' Return a Collection. If check is True, then only pass name if collection exists. '''
 
-    db = getdb(arg().db)
+    db = getdb(config.CUR_DB)
 
     if db.hasCollection(name) and not check:
         ans = db[name]
 
     if not db.hasCollection(name) and not check:
         print(f'Creating Collection {name}')
-        getdb(arg().db).createCollection(className='Collection', name=name)
+        db.createCollection(className='Collection', name=name)
         ans = db[name]
 
     elif db.hasCollection(name) and check:
@@ -149,7 +150,7 @@ def push(key, obj):
     If Collection and DB do not exist,
     create DB and Collection, then create doc.
     '''
-    col = getcoll(arg().collection)
+    col = getcoll(config.CUR_COL)
     doc = col.createDocument(obj)
     doc._key = key
     doc.save()
@@ -159,7 +160,7 @@ def push(key, obj):
 
 def get_aql(expression):
     ''' Helper for AQLQuery. '''
-    return getdb(arg().db).AQLQuery(expression, rawResults=True)
+    return getdb(config.CUR_DB).AQLQuery(expression, rawResults=True)
 
 def query(expression):
     ''' Takes an AQL expression and returns a list of responses. '''
@@ -224,15 +225,19 @@ def arg():
     # Parent parser.
     parser = argparse.ArgumentParser(
         prog='nmapy',
-        description='simple wrapper for nmap')
-
-    parser.add_argument('-s',   '--server', dest='server', type=str, default='localhost')
-    parser.add_argument('-p',   '--port', dest='port', type=str, default='8529')
-    parser.add_argument('-db',  '--database', dest='db', type=str)
-    parser.add_argument('-c',   '--collection', dest='collection', type=str)
+        description='simple helper for nmap')
 
     # Sub parsers.
     subparser = parser.add_subparsers(help='commands', dest='cmd')
+
+    ## Database Parser
+    db_parser = subparser.add_parser('database', aliases=['db'])
+    #db_parser.add_argument('-l','--list', dest='db_list', type=str, help='list collections')
+    db_parser.add_argument('switch', type=str, help='switch current database')
+
+    ## Current Collection Parser
+    coll_parser = subparser.add_parser('switch', aliases=['sw'])
+    coll_parser.add_argument('collection', help='switch current collection')
 
     ## Scan parser.
     # TODO create built in scans
@@ -262,6 +267,7 @@ def arg():
                             ],
                             help='Returns fields for all matching nodes.')
     get_parser.add_argument('-v', '--verbose', dest='raw', action='store_true')
+
     ## Find command
     find_parser = subparser.add_parser('find', aliases=['f'])
     find_parser.add_argument('string', type=str, help='Returns nodes with matching text')
@@ -275,8 +281,14 @@ def arg():
 
 def cmd(args):
     ## Control Flow
-
+    # TODO This should be done without if blocks. Maybe just call the 3-tuple.
     # Scan
+    if args.cmd == 'database' or args.cmd == 'db':
+        config.update('DATABASE', args.switch)
+
+    if args.cmd == 'switch' or args.cmd == 'sw':
+        config.update('COLLECTION', args.collection)
+
     if args.cmd == 'scan' or args.cmd == 'sc':
         if not args.nmap:
             resp = vuln_scan(args.range)
@@ -323,14 +335,15 @@ def main():
 
     args = cmd(arg())
     # TODO move control flow to p()
-    if type(args) is dict:
-        p(args)
-    elif type (args) is list:
-        for i in args:
-            p(i)
-    else:
-        print(type(args))
-        p(args)
+    # This is just handle output for dict vs list.
+    try:
+        if type(args) is dict:
+            p(args)
+        elif type (args) is list:
+            for i in args:
+                p(i)
+    except Exception as e:
+        p(e)
 
 if __name__ == '__main__':
     main()
