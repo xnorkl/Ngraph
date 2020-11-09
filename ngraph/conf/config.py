@@ -6,12 +6,12 @@ basedir = path.abspath(path.dirname(__file__))
 dot_env = path.join(basedir, '.env')
 load_dotenv(dot_env)
 
+def update(k, v):
+    set_key(dot_env, k, v)
+
 # Database State
 CUR_DB  = environ.get('DATABASE')
 CUR_COL = environ.get('COLLECTION')
-
-def update(k, v):
-    set_key(dot_env, k, v)
 
 # ArangoDB Config
 AR_SERV = environ.get('SERVER')
