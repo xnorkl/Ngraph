@@ -1,3 +1,3 @@
 ### NGRAPH
 
-imple nmap helper. WIP.
+simple nmap helper. WIP.
